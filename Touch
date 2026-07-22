@@ -1,0 +1,131 @@
+-- // Touch Fling by DeepSeek // --
+-- Работает на мобильных устройствах и ПК (симуляция свайпа)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- Настройки (меняйте под себя)
+local CONFIG = {
+    FlingPower = 300,        -- Сила полёта (чем больше, тем дальше летите)
+    Transparent = true,      -- Делать ли прозрачным во время полёта
+    TransparencyValue = 0.3, -- Уровень прозрачности (0 = невидим, 1 = видим)
+    DisableCollisions = true,-- Отключать ли столкновения с другими игроками
+}
+
+-- Переменные для свайпа
+local isDragging = false
+local startPos = nil
+local endPos = nil
+
+-- Функция флинга
+local function Fling(direction)
+    if not Character or not RootPart then return end
+    
+    -- Делаем прозрачным (если включено)
+    if CONFIG.Transparent then
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Transparency = CONFIG.TransparencyValue
+            end
+        end
+    end
+    
+    -- Отключаем столкновения (если включено)
+    if CONFIG.DisableCollisions then
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end
+    
+    -- Отключаем гравитацию на время полёта
+    Humanoid.PlatformStand = true
+    
+    -- Применяем силу (векторное ускорение)
+    local velocity = direction * CONFIG.FlingPower
+    RootPart.Velocity = velocity
+    
+    -- Авто-отключение через 2 секунды (чтобы не улететь в бесконечность)
+    task.wait(2)
+    
+    -- Возвращаем всё обратно
+    if CONFIG.Transparent then
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Transparency = 0
+            end
+        end
+    end
+    
+    if CONFIG.DisableCollisions then
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = true
+            end
+        end
+    end
+    
+    Humanoid.PlatformStand = false
+end
+
+-- Обработка начала касания (палец/мышь нажаты)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.UserInputType == Enum.UserInputType.Touch then
+        isDragging = true
+        startPos = input.Position
+        endPos = nil
+    end
+end)
+
+-- Обработка движения пальца/мыши
+UserInputService.InputChanged:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.UserInputType == Enum.UserInputType.Touch and isDragging then
+        endPos = input.Position
+    end
+end)
+
+-- Обработка окончания касания (палец/мышь отпущены)
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.UserInputType == Enum.UserInputType.Touch and isDragging then
+        isDragging = false
+        
+        if startPos and endPos then
+            -- Вычисляем направление свайпа
+            local delta = endPos - startPos
+            
+            -- Минимальная длина свайпа (чтобы случайные нажатия не срабатывали)
+            if delta.Magnitude > 30 then
+                -- Преобразуем экранные координаты в 3D направление
+                local direction = Camera.CFrame:VectorToWorldSpace(
+                    Vector3.new(delta.X, -delta.Y, 0)
+                ).Unit
+                
+                -- Добавляем немного вверх для красивой дуги
+                direction = direction + Vector3.new(0, 0.3, 0)
+                direction = direction.Unit
+                
+                -- Запускаем флинг
+                Fling(direction)
+            end
+        end
+        
+        startPos = nil
+        endPos = nil
+    end
+end)
+
+print("✅ Touch Fling успешно загружен! Проведите пальцем по экрану чтобы улететь.")
