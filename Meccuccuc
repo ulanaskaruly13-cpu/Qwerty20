@@ -1,0 +1,150 @@
+local Players = game:GetService("Players")
+local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+
+local function DropItems()
+    for _, item in pairs(Character:GetDescendants()) do
+        if item:IsA("Tool") or item:IsA("Accessory") or item:IsA("Clothing") then
+            pcall(function()
+                item.Parent = workspace
+                wait(0.05)
+                item:Destroy()
+            end)
+        end
+    end
+    for _, acc in pairs(Character:GetChildren()) do
+        if acc:IsA("Accessory") then
+            pcall(function()
+                acc:Destroy()
+            end)
+        end
+    end
+end
+
+local function KickPlayer(target)
+    pcall(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+        wait(0.1)
+        if target.Character then
+            target.Character:Destroy()
+        end
+        for i = 1, 30 do
+            local ev = ReplicatedStorage:FindFirstChildWhichIsA("RemoteEvent")
+            if ev then
+                ev:FireServer()
+            end
+            wait()
+        end
+    end)
+end
+
+local function KickAll()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player then
+            KickPlayer(player)
+            wait(0.2)
+        end
+    end
+end
+
+local function DropAllItems()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            for _, item in pairs(player.Character:GetDescendants()) do
+                if item:IsA("Tool") or item:IsA("Accessory") or item:IsA("Clothing") then
+                    pcall(function()
+                        item.Parent = workspace
+                        wait(0.05)
+                        item:Destroy()
+                    end)
+                end
+            end
+        end
+    end
+end
+
+local function ResetAll()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player and player.Character then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    pcall(function()
+                        part.Velocity = Vector3.new(
+                            math.random(-200, 200),
+                            math.random(100, 300),
+                            math.random(-200, 200)
+                        )
+                    end)
+                end
+            end
+            wait(0.1)
+            player.Character:Destroy()
+        end
+    end
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = Player.PlayerGui
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 250, 0, 350)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -175)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+MainFrame.BackgroundTransparency = 0.1
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 10)
+Corner.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.Text = "DROP SCRIPT"
+Title.TextColor3 = Color3.fromRGB(0, 200, 255)
+Title.BackgroundTransparency = 1
+Title.TextScaled = true
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+local y = 0.15
+local buttonData = {
+    {"Drop My Items", DropItems},
+    {"Drop All Items", DropAllItems},
+    {"Kick All Players", KickAll},
+    {"Reset All Players", ResetAll},
+    {"Clear Game Items", function()
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Tool") or obj:IsA("Accessory") or obj:IsA("Clothing") then
+                pcall(function()
+                    obj:Destroy()
+                end)
+            end
+        end
+    end}
+}
+
+for _, data in pairs(buttonData) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = UDim2.new(0.05, 0, y, 0)
+    btn.Text = data[1]
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.GothamBold
+    btn.TextScaled = true
+    btn.Parent = MainFrame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 4)
+    btnCorner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(data[2])
+    y = y + 0.12
+end
