@@ -1,0 +1,569 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Camera = workspace.CurrentCamera
+
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+local menuVisible = false
+local isDragging = false
+local dragStart = nil
+local dragStartPos = nil
+
+local functions = {
+    antiGrab = false,
+    gucci = false,
+    loopGrabKick = false,
+    thirdPerson = false,
+    esp = false,
+    lag = false,
+    keyboard = false,
+    teleport = false
+}
+
+local function CreateMenu()
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "UltimateMenu"
+    ScreenGui.Parent = Player.PlayerGui
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    -- DRAGGABLE ICON
+    local Icon = Instance.new("ImageButton")
+    Icon.Size = UDim2.new(0, 50, 0, 50)
+    Icon.Position = UDim2.new(0.01, 0, 0.5, -25)
+    Icon.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+    Icon.BackgroundTransparency = 0.15
+    Icon.BorderSizePixel = 0
+    Icon.Image = "rbxassetid://6031090954"
+    Icon.ImageColor3 = Color3.fromRGB(0, 200, 255)
+    Icon.ScaleType = Enum.ScaleType.Fit
+    Icon.Parent = ScreenGui
+    
+    local IconCorner = Instance.new("UICorner")
+    IconCorner.CornerRadius = UDim.new(1, 0)
+    IconCorner.Parent = Icon
+    
+    -- MAIN MENU
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 400, 0, 500)
+    MainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+    MainFrame.BackgroundTransparency = 0.08
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = ScreenGui
+    MainFrame.Visible = false
+    
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 12)
+    MainCorner.Parent = MainFrame
+    
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 40)
+    Title.Position = UDim2.new(0, 0, 0, 0)
+    Title.Text = "🔥 ULTIMATE MENU 🔥"
+    Title.TextColor3 = Color3.fromRGB(0, 200, 255)
+    Title.BackgroundTransparency = 1
+    Title.TextScaled = true
+    Title.Font = Enum.Font.GothamBold
+    Title.Parent = MainFrame
+    
+    -- CLOSE BUTTON
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+    CloseBtn.Position = UDim2.new(0.92, 0, 0.02, 0)
+    CloseBtn.Text = "✕"
+    CloseBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+    CloseBtn.BorderSizePixel = 0
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.TextScaled = true
+    CloseBtn.Parent = MainFrame
+    
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(1, 0)
+    CloseCorner.Parent = CloseBtn
+    
+    -- TABS
+    local TabFrame = Instance.new("Frame")
+    TabFrame.Size = UDim2.new(1, 0, 0, 35)
+    TabFrame.Position = UDim2.new(0, 0, 0, 40)
+    TabFrame.BackgroundTransparency = 1
+    TabFrame.Parent = MainFrame
+    
+    local tabs = {"Defense", "Target", "Players", "Visual", "Misc"}
+    local tabButtons = {}
+    local currentTab = "Defense"
+    
+    for i, name in pairs(tabs) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.2, 0, 1, 0)
+        btn.Position = UDim2.new((i-1) * 0.2, 0, 0, 0)
+        btn.Text = name
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+        btn.BorderSizePixel = 0
+        btn.Font = Enum.Font.GothamBold
+        btn.TextScaled = true
+        btn.Parent = TabFrame
+        
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 4)
+        btnCorner.Parent = btn
+        
+        tabButtons[name] = btn
+        
+        btn.MouseButton1Click:Connect(function()
+            currentTab = name
+            for _, b in pairs(tabButtons) do
+                b.BackgroundColor3 = b == btn and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(35, 35, 50)
+            end
+            UpdateContent()
+        end)
+    end
+    
+    -- CONTENT FRAME
+    local ContentFrame = Instance.new("ScrollingFrame")
+    ContentFrame.Size = UDim2.new(1, 0, 1, -85)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 80)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = MainFrame
+    ContentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    
+    local function CreateToggle(parent, text, y, default, callback)
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0.95, 0, 0, 40)
+        frame.Position = UDim2.new(0.025, 0, y, 0)
+        frame.BackgroundTransparency = 1
+        frame.Parent = parent
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(0.7, 0, 1, 0)
+        label.Position = UDim2.new(0, 0, 0, 0)
+        label.Text = text
+        label.TextColor3 = Color3.fromRGB(220, 220, 220)
+        label.BackgroundTransparency = 1
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Font = Enum.Font.Gotham
+        label.TextScaled = true
+        label.Parent = frame
+        
+        local toggle = Instance.new("TextButton")
+        toggle.Size = UDim2.new(0.2, 0, 0.8, 0)
+        toggle.Position = UDim2.new(0.8, 0, 0.1, 0)
+        toggle.Text = default and "ON" or "OFF"
+        toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        toggle.BackgroundColor3 = default and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+        toggle.BorderSizePixel = 0
+        toggle.Font = Enum.Font.GothamBold
+        toggle.TextScaled = true
+        toggle.Parent = frame
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 4)
+        corner.Parent = toggle
+        
+        local state = default
+        toggle.MouseButton1Click:Connect(function()
+            state = not state
+            toggle.Text = state and "ON" or "OFF"
+            toggle.BackgroundColor3 = state and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+            callback(state)
+        end)
+        
+        return {Toggle = toggle, SetState = function(s)
+            state = s
+            toggle.Text = state and "ON" or "OFF"
+            toggle.BackgroundColor3 = state and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+        end}
+    end
+    
+    local function CreateButton(parent, text, y, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.9, 0, 0, 35)
+        btn.Position = UDim2.new(0.05, 0, y, 0)
+        btn.Text = text
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+        btn.BorderSizePixel = 0
+        btn.Font = Enum.Font.GothamBold
+        btn.TextScaled = true
+        btn.Parent = parent
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 4)
+        corner.Parent = btn
+        
+        btn.MouseButton1Click:Connect(callback)
+        return btn
+    end
+    
+    local contentY = 0
+    local contentObjects = {}
+    
+    local function ClearContent()
+        for _, obj in pairs(contentObjects) do
+            obj:Destroy()
+        end
+        contentObjects = {}
+        contentY = 0
+    end
+    
+    local function UpdateContent()
+        ClearContent()
+        
+        if currentTab == "Defense" then
+            local antiGrabToggle = CreateToggle(ContentFrame, "🤚 Anti-Grab", contentY, false, function(state)
+                functions.antiGrab = state
+                if state then
+                    spawn(function()
+                        while functions.antiGrab do
+                            for _, otherPlayer in pairs(Players:GetPlayers()) do
+                                if otherPlayer ~= Player and otherPlayer.Character then
+                                    local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+                                    if otherRoot and RootPart then
+                                        local dist = (RootPart.Position - otherRoot.Position).Magnitude
+                                        if dist < 12 then
+                                            Humanoid.PlatformStand = false
+                                            Humanoid:BreakJoints()
+                                            otherRoot.Velocity = (otherRoot.Position - RootPart.Position).Unit * 80 + Vector3.new(0, 40, 0)
+                                        end
+                                    end
+                                end
+                            end
+                            wait(0.2)
+                        end
+                    end)
+                end
+            end)
+            contentObjects[#contentObjects+1] = antiGrabToggle.Toggle
+            contentY = contentY + 0.1
+            
+            local gucciToggle = CreateToggle(ContentFrame, "👔 Gucci (Защита от граба)", contentY, false, function(state)
+                functions.gucci = state
+                if state then
+                    spawn(function()
+                        while functions.gucci do
+                            pcall(function()
+                                for _, part in pairs(Character:GetDescendants()) do
+                                    if part:IsA("BasePart") then
+                                        part.CanCollide = false
+                                        part.Transparency = 0.3
+                                    end
+                                end
+                            end)
+                            wait(0.5)
+                        end
+                    end)
+                else
+                    pcall(function()
+                        for _, part in pairs(Character:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.CanCollide = true
+                                part.Transparency = 0
+                            end
+                        end
+                    end)
+                end
+            end)
+            contentObjects[#contentObjects+1] = gucciToggle.Toggle
+            contentY = contentY + 0.1
+            
+        elseif currentTab == "Target" then
+            local loopGrabToggle = CreateToggle(ContentFrame, "🔄 Loop Grab Kick", contentY, false, function(state)
+                functions.loopGrabKick = state
+                if state then
+                    spawn(function()
+                        while functions.loopGrabKick do
+                            for _, otherPlayer in pairs(Players:GetPlayers()) do
+                                if otherPlayer ~= Player and otherPlayer.Character then
+                                    local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+                                    if otherRoot and RootPart then
+                                        local dist = (RootPart.Position - otherRoot.Position).Magnitude
+                                        if dist < 15 then
+                                            pcall(function()
+                                                VirtualUser:CaptureController()
+                                                VirtualUser:ClickButton2(Vector2.new())
+                                                if otherPlayer.Character then
+                                                    otherPlayer.Character:Destroy()
+                                                end
+                                            end)
+                                            wait(0.1)
+                                        end
+                                    end
+                                end
+                            end
+                            wait(0.5)
+                        end
+                    end)
+                end
+            end)
+            contentObjects[#contentObjects+1] = loopGrabToggle.Toggle
+            contentY = contentY + 0.1
+            
+            CreateButton(ContentFrame, "👢 Kick All Players", contentY, function()
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= Player then
+                        spawn(function()
+                            pcall(function()
+                                VirtualUser:CaptureController()
+                                VirtualUser:ClickButton2(Vector2.new())
+                                if player.Character then player.Character:Destroy() end
+                            end)
+                        end)
+                        wait(0.2)
+                    end
+                end
+            end)
+            contentY = contentY + 0.1
+            
+            CreateButton(ContentFrame, "💀 Kill All Players", contentY, function()
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= Player and player.Character and player.Character:FindFirstChild("Humanoid") then
+                        player.Character.Humanoid.Health = 0
+                    end
+                    wait(0.1)
+                end
+            end)
+            contentY = contentY + 0.1
+            
+        elseif currentTab == "Players" then
+            local thirdPersonToggle = CreateToggle(ContentFrame, "👤 Third Person View", contentY, false, function(state)
+                functions.thirdPerson = state
+                if state then
+                    Camera.CameraSubject = Character
+                    Camera.CameraType = Enum.CameraType.Follow
+                    Camera.FieldOfView = 70
+                else
+                    Camera.CameraType = Enum.CameraType.Custom
+                end
+            end)
+            contentObjects[#contentObjects+1] = thirdPersonToggle.Toggle
+            contentY = contentY + 0.1
+            
+            local espToggle = CreateToggle(ContentFrame, "👁️ ESP Players", contentY, false, function(state)
+                functions.esp = state
+            end)
+            contentObjects[#contentObjects+1] = espToggle.Toggle
+            contentY = contentY + 0.1
+            
+            CreateButton(ContentFrame, "📦 Drop All Items", contentY, function()
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player.Character then
+                        for _, item in pairs(player.Character:GetDescendants()) do
+                            if item:IsA("Tool") or item:IsA("Accessory") or item:IsA("Clothing") then
+                                pcall(function()
+                                    item.Parent = workspace
+                                    wait(0.05)
+                                    item:Destroy()
+                                end)
+                            end
+                        end
+                    end
+                end
+            end)
+            contentY = contentY + 0.1
+            
+        elseif currentTab == "Visual" then
+            local lagToggle = CreateToggle(ContentFrame, "🌀 Lag Switch", contentY, false, function(state)
+                functions.lag = state
+                if state then
+                    spawn(function()
+                        while functions.lag do
+                            pcall(function()
+                                for i = 1, 100 do
+                                    local ev = ReplicatedStorage:FindFirstChildWhichIsA("RemoteEvent")
+                                    if ev then ev:FireServer() end
+                                end
+                            end)
+                            wait(0.1)
+                        end
+                    end)
+                end
+            end)
+            contentObjects[#contentObjects+1] = lagToggle.Toggle
+            contentY = contentY + 0.1
+            
+            local keyboardToggle = CreateToggle(ContentFrame, "⌨️ Keyboard TP (Телепорт)", contentY, false, function(state)
+                functions.keyboard = state
+            end)
+            contentObjects[#contentObjects+1] = keyboardToggle.Toggle
+            contentY = contentY + 0.1
+            
+        elseif currentTab == "Misc" then
+            CreateButton(ContentFrame, "🌀 Reset Server", contentY, function()
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= Player and player.Character then
+                        for _, part in pairs(player.Character:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                pcall(function()
+                                    part.Velocity = Vector3.new(math.random(-200,200), math.random(100,300), math.random(-200,200))
+                                end)
+                            end
+                        end
+                        wait(0.1)
+                        player.Character:Destroy()
+                    end
+                end
+            end)
+            contentY = contentY + 0.1
+            
+            CreateButton(ContentFrame, "🗑️ Clear Game Items", contentY, function()
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Tool") or obj:IsA("Accessory") or obj:IsA("Clothing") then
+                        pcall(function() obj:Destroy() end)
+                    end
+                end
+            end)
+            contentY = contentY + 0.1
+            
+            CreateButton(ContentFrame, "🚀 Fly Mode", contentY, function()
+                local flying = false
+                spawn(function()
+                    flying = not flying
+                    Humanoid.PlatformStand = flying
+                    while flying do
+                        local move = Vector3.new()
+                        if UserInputService:IsKeyDown(Enum.KeyCode.W) then move = move + Camera.CFrame.LookVector end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.S) then move = move - Camera.CFrame.LookVector end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.A) then move = move - Camera.CFrame.RightVector end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.D) then move = move + Camera.CFrame.RightVector end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move = move - Vector3.new(0, 1, 0) end
+                        
+                        if move.Magnitude > 0 then
+                            RootPart.Velocity = move.Unit * 100
+                        else
+                            RootPart.Velocity = Vector3.new(0, 0, 0)
+                        end
+                        wait()
+                    end
+                end)
+            end)
+            contentY = contentY + 0.1
+        end
+        
+        ContentFrame.CanvasSize = UDim2.new(0, 0, 0, contentY * 45 + 20)
+    end
+    
+    -- DRAG LOGIC FOR ICON
+    Icon.MouseButton1Down:Connect(function()
+        isDragging = true
+        dragStart = UserInputService:GetMouseLocation()
+        dragStartPos = Icon.Position
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and isDragging then
+            local delta = input.Position - dragStart
+            local newPos = UDim2.new(
+                dragStartPos.X.Scale,
+                dragStartPos.X.Offset + delta.X,
+                dragStartPos.Y.Scale,
+                dragStartPos.Y.Offset + delta.Y
+            )
+            Icon.Position = newPos
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isDragging = false
+        end
+    end)
+    
+    -- ICON CLICK
+    Icon.MouseButton1Click:Connect(function()
+        menuVisible = not menuVisible
+        MainFrame.Visible = menuVisible
+        Icon.Visible = not menuVisible
+        if menuVisible then
+            UpdateContent()
+        end
+    end)
+    
+    -- CLOSE BUTTON
+    CloseBtn.MouseButton1Click:Connect(function()
+        menuVisible = false
+        MainFrame.Visible = false
+        Icon.Visible = true
+    end)
+    
+    -- KEYBOARD TELEPORT
+    UserInputService.InputBegan:Connect(function(input)
+        if functions.keyboard and input.KeyCode == Enum.KeyCode.T then
+            local mouse = Player:GetMouse()
+            local targetPos = mouse.Hit.Position
+            if RootPart then
+                RootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
+            end
+        end
+    end)
+    
+    -- ESP LOGIC
+    local ESPObjects = {}
+    
+    RunService.RenderStepped:Connect(function()
+        if functions.esp then
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= Player and player.Character then
+                    local char = player.Character
+                    local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+                    if root then
+                        local pos, onScreen = Camera:WorldToScreenPoint(root.Position)
+                        if onScreen then
+                            if not ESPObjects[player] then
+                                local esp = {
+                                    Box = Drawing.new("Square"),
+                                    Name = Drawing.new("Text")
+                                }
+                                esp.Box.Thickness = 1.5
+                                esp.Box.Filled = false
+                                esp.Box.Visible = false
+                                esp.Name.Size = 14
+                                esp.Name.Center = true
+                                esp.Name.Visible = false
+                                esp.Name.Font = Drawing.Fonts.UI
+                                ESPObjects[player] = esp
+                            end
+                            local esp = ESPObjects[player]
+                            local head = char:FindFirstChild("Head")
+                            if head then
+                                local headPos, _ = Camera:WorldToScreenPoint(head.Position + Vector3.new(0, 1.5, 0))
+                                local height = 100
+                                local width = 50
+                                esp.Box.Position = Vector2.new(pos.X - width/2, pos.Y - height/2)
+                                esp.Box.Size = Vector2.new(width, height)
+                                esp.Box.Color = Color3.fromRGB(255, 0, 0)
+                                esp.Box.Visible = true
+                                esp.Name.Text = player.Name
+                                esp.Name.Position = Vector2.new(pos.X, pos.Y - height/2 - 15)
+                                esp.Name.Color = Color3.fromRGB(255, 255, 255)
+                                esp.Name.Visible = true
+                            end
+                        end
+                    end
+                end
+            end
+        else
+            for player, esp in pairs(ESPObjects) do
+                esp.Box.Visible = false
+                esp.Name.Visible = false
+            end
+        end
+    end)
+    
+    UpdateContent()
+    tabButtons["Defense"].BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    
+    return ScreenGui
+end
+
+CreateMenu()
+print("✅ Меню загружено! Нажми на иконку для открытия")
