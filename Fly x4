@@ -1,0 +1,15 @@
+local raft = script.Parent
+local linearVelocity = raft:FindFirstChildOfClass("LinearVelocity")
+
+-- Создаем RemoteEvent для связи GUI и сервера
+local remoteEvent = Instance.new("RemoteEvent")
+remoteEvent.Name = "ChangeRaftSpeed"
+remoteEvent.Parent = game:GetService("ReplicatedStorage")
+
+-- Обработка изменения скорости с клиента
+remoteEvent.OnServerEvent:Connect(function(player, newSpeed)
+	if linearVelocity then
+		-- Изменяем скорость движения плота вперед (по оси Z)
+		linearVelocity.VectorVelocity = Vector3.new(0, 0, newSpeed)
+	end
+end)
