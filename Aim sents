@@ -1,0 +1,226 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+local aimbotEnabled = false
+local aimbotActive = false
+local targetPlayer = nil
+
+local function CreateAimbotMenu()
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "AimbotMenu"
+    ScreenGui.Parent = Player.PlayerGui
+    ScreenGui.ResetOnSpawn = false
+    
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 200, 0, 100)
+    MainFrame.Position = UDim2.new(0.5, -100, 0.5, -50)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+    MainFrame.BackgroundTransparency = 0.1
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = ScreenGui
+    MainFrame.Visible = false
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.Parent = MainFrame
+    
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 30)
+    Title.Position = UDim2.new(0, 0, 0, 0)
+    Title.Text = "🎯 AIMBOT"
+    Title.TextColor3 = Color3.fromRGB(255, 50, 50)
+    Title.BackgroundTransparency = 1
+    Title.TextScaled = true
+    Title.Font = Enum.Font.GothamBold
+    Title.Parent = MainFrame
+    
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Size = UDim2.new(0.8, 0, 0, 35)
+    ToggleBtn.Position = UDim2.new(0.1, 0, 0.4, 0)
+    ToggleBtn.Text = "🔴 ВЫКЛ"
+    ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    ToggleBtn.BorderSizePixel = 0
+    ToggleBtn.Font = Enum.Font.GothamBold
+    ToggleBtn.TextScaled = true
+    ToggleBtn.Parent = MainFrame
+    
+    local BtnCorner = Instance.new("UICorner")
+    BtnCorner.CornerRadius = UDim.new(0, 5)
+    BtnCorner.Parent = ToggleBtn
+    
+    local StatusLabel = Instance.new("TextLabel")
+    StatusLabel.Size = UDim2.new(1, 0, 0, 20)
+    StatusLabel.Position = UDim2.new(0, 0, 0.8, 0)
+    StatusLabel.Text = "Статус: Ожидание"
+    StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    StatusLabel.BackgroundTransparency = 1
+    StatusLabel.TextScaled = true
+    StatusLabel.Font = Enum.Font.Gotham
+    StatusLabel.Parent = MainFrame
+    
+    local OpenBtn = Instance.new("TextButton")
+    OpenBtn.Size = UDim2.new(0, 40, 0, 40)
+    OpenBtn.Position = UDim2.new(0.01, 0, 0.01, 0)
+    OpenBtn.Text = "🎯"
+    OpenBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+    OpenBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+    OpenBtn.BackgroundTransparency = 0.2
+    OpenBtn.BorderSizePixel = 0
+    OpenBtn.Font = Enum.Font.GothamBold
+    OpenBtn.TextScaled = true
+    OpenBtn.Parent = ScreenGui
+    
+    local OpenCorner = Instance.new("UICorner")
+    OpenCorner.CornerRadius = UDim.new(1, 0)
+    OpenCorner.Parent = OpenBtn
+    
+    local function UpdateUI()
+        ToggleBtn.Text = aimbotEnabled and "🟢 ВКЛ" or "🔴 ВЫКЛ"
+        ToggleBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+        StatusLabel.Text = aimbotEnabled and "Статус: Активен" or "Статус: Выключен"
+        StatusLabel.TextColor3 = aimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(200, 200, 200)
+    end
+    
+    ToggleBtn.MouseButton1Click:Connect(function()
+        aimbotEnabled = not aimbotEnabled
+        UpdateUI()
+        if not aimbotEnabled then
+            targetPlayer = nil
+            aimbotActive = false
+        end
+    end)
+    
+    OpenBtn.MouseButton1Click:Connect(function()
+        MainFrame.Visible = not MainFrame.Visible
+        OpenBtn.Visible = not MainFrame.Visible
+    end)
+    
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.LeftAlt then
+            MainFrame.Visible = not MainFrame.Visible
+            OpenBtn.Visible = not MainFrame.Visible
+        end
+    end)
+    
+    UpdateUI()
+    return ScreenGui
+end
+
+CreateAimbotMenu()
+
+local function GetClosestPlayer()
+    local closest = nil
+    local closestDist = math.huge
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player and player.Character then
+            local char = player.Character
+            local head = char:FindFirstChild("Head")
+            local root = char:FindFirstChild("HumanoidRootPart")
+            
+            if head and root and RootPart then
+                local pos, onScreen = Camera:WorldToScreenPoint(head.Position)
+                if onScreen then
+                    local distance = (RootPart.Position - root.Position).Magnitude
+                    if distance < 500 and distance < closestDist then
+                        closest = player
+                        closestDist = distance
+                    end
+                end
+            end
+        end
+    end
+    
+    return closest
+end
+
+local function GetPredictedPosition(player, bulletSpeed)
+    if not player or not player.Character then return nil end
+    
+    local head = player.Character:FindFirstChild("Head")
+    local root = player.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not head or not root then return nil end
+    
+    local currentPos = head.Position
+    local velocity = root.Velocity
+    
+    if bulletSpeed and bulletSpeed > 0 then
+        local distance = (RootPart.Position - currentPos).Magnitude
+        local time = distance / bulletSpeed
+        return currentPos + (velocity * time)
+    end
+    
+    return currentPos
+end
+
+local function AimAt(target)
+    if not target or not target.Character then return end
+    
+    local head = target.Character:FindFirstChild("Head")
+    if not head then return end
+    
+    local targetPos = head.Position
+    
+    if RootPart and Camera then
+        local direction = (targetPos - Camera.CFrame.Position).Unit
+        local newCFrame = CFrame.lookAt(Camera.CFrame.Position, Camera.CFrame.Position + direction)
+        Camera.CFrame = newCFrame
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    if not aimbotEnabled then
+        aimbotActive = false
+        return
+    end
+    
+    local target = GetClosestPlayer()
+    
+    if target then
+        targetPlayer = target
+        aimbotActive = true
+        
+        local head = target.Character:FindFirstChild("Head")
+        if head then
+            local pos, onScreen = Camera:WorldToScreenPoint(head.Position)
+            if onScreen then
+                AimAt(target)
+            end
+        end
+    else
+        aimbotActive = false
+        targetPlayer = nil
+    end
+end)
+
+local function AimAtPlayer(player)
+    if not aimbotEnabled then return end
+    if not player or not player.Character then return end
+    
+    local head = player.Character:FindFirstChild("Head")
+    if head then
+        AimAt(player)
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input)
+    if not aimbotEnabled then return end
+    
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local target = GetClosestPlayer()
+        if target then
+            AimAtPlayer(target)
+        end
+    end
+end)
+
+print("🎯 Aimbot загружен! Нажми LeftAlt для открытия меню")
