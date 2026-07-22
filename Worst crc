@@ -1,0 +1,208 @@
+LocalPlayer = game:GetService("Players").LocalPlayer
+HWID = "SpoofedHWID"
+
+local function spoofRequest(url, responseBody)
+    return {
+        ["StatusMessage"] = "OK",
+        ["Version"] = "HTTP/1.1",
+        ["HttpError"] = Enum.HttpError.OK,
+        ["StatusCode"] = 200,
+        ["Headers"] = {},
+        ["Body"] = responseBody,
+    }
+end
+
+local spoofed_files = {
+    ["lime_ui_lib.lua"] = [[
+        local Library = {}
+        function Library:Window(title)
+            local UiLib = Instance.new("ScreenGui")
+            UiLib.Name = "UiLib"
+            UiLib.Parent = game:GetService("CoreGui")
+            local function getNextWindowPos()
+                local biggest = 0
+                for _, v in pairs(UiLib:GetChildren()) do
+                    if v.Position.X.Offset > biggest then
+                        biggest = v.Position.X.Offset
+                    end
+                end
+                if biggest == 0 then biggest = 15 else biggest = biggest + 10 end
+                return biggest
+            end
+            local Top = Instance.new("Frame")
+            Top.Parent = UiLib
+            Top.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            Top.Size = UDim2.new(0, 204, 0, 28)
+            Top.Position = UDim2.new(0, getNextWindowPos(), 0.01, 0)
+            Top.Active = true
+            Top.Draggable = true
+            Top.BackgroundTransparency = 0.5
+            local Container = Instance.new("Frame")
+            Container.Parent = Top
+            Container.BackgroundTransparency = 1
+            Container.ClipsDescendants = true
+            Container.Position = UDim2.new(0, 0, 1, 0)
+            Container.Size = UDim2.new(0, 204, 0, 762)
+            local Title = Instance.new("TextLabel")
+            Title.Parent = Top
+            Title.BackgroundTransparency = 1
+            Title.Position = UDim2.new(0.024, 0, 0.142, 0)
+            Title.Size = UDim2.new(0, 174, 0, 20)
+            Title.Font = Enum.Font.GothamSemibold
+            Title.Text = title
+            Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+            Title.TextScaled = true
+            local Minimize = Instance.new("ImageButton")
+            Minimize.Parent = Top
+            Minimize.BackgroundTransparency = 1
+            Minimize.Position = UDim2.new(0.877, 0, 0, 0)
+            Minimize.Size = UDim2.new(0, 25, 0, 25)
+            Minimize.Image = "rbxassetid://3926307971"
+            Minimize.ImageColor3 = Color3.fromRGB(0, 255, 102)
+            local Lib = {}
+            function Lib:Button(name, callback)
+                local ButtonContainer = Instance.new("Frame")
+                ButtonContainer.Parent = Container
+                ButtonContainer.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+                ButtonContainer.Size = UDim2.new(0, 204, 0, 28)
+                ButtonContainer.BackgroundTransparency = 0.5
+                local Button = Instance.new("TextButton")
+                Button.Parent = ButtonContainer
+                Button.BackgroundTransparency = 1
+                Button.Size = UDim2.new(0, 204, 0, 28)
+                Button.Text = ""
+                Button.MouseButton1Click:Connect(callback)
+                local ButtonName = Instance.new("TextLabel")
+                ButtonName.Parent = ButtonContainer
+                ButtonName.BackgroundTransparency = 1
+                ButtonName.Position = UDim2.new(0.024, 0, 0.142, 0)
+                ButtonName.Size = UDim2.new(0, 194, 0, 20)
+                ButtonName.ZIndex = 3
+                ButtonName.Font = Enum.Font.GothamSemibold
+                ButtonName.Text = name
+                ButtonName.TextColor3 = Color3.fromRGB(255, 255, 255)
+                ButtonName.TextScaled = true
+            end
+            function Lib:Toggle(name, callback)
+                local ToggleContainer = Instance.new("Frame")
+                ToggleContainer.Parent = Container
+                ToggleContainer.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+                ToggleContainer.Size = UDim2.new(0, 204, 0, 30)
+                ToggleContainer.BackgroundTransparency = 0.5
+                local ToggleName = Instance.new("TextLabel")
+                ToggleName.Parent = ToggleContainer
+                ToggleName.BackgroundTransparency = 1
+                ToggleName.Position = UDim2.new(0.024, 0, 0.142, 0)
+                ToggleName.Size = UDim2.new(0, 169, 0, 20)
+                ToggleName.Font = Enum.Font.GothamSemibold
+                ToggleName.Text = name
+                ToggleName.TextColor3 = Color3.fromRGB(255, 255, 255)
+                ToggleName.TextScaled = true
+                local Toggle = Instance.new("TextButton")
+                Toggle.Parent = ToggleContainer
+                Toggle.BackgroundColor3 = Color3.fromRGB(39, 39, 39)
+                Toggle.Position = UDim2.new(0.852, 0, 0.066, 0)
+                Toggle.Size = UDim2.new(0, 25, 0, 23)
+                Toggle.AutoButtonColor = false
+                Toggle.Text = ""
+                local Toggled = false
+                Toggle.MouseButton1Click:Connect(function()
+                    Toggled = not Toggled
+                    callback(Toggled)
+                end)
+            end
+            return Lib
+        end
+        return Library
+    ]],
+    ["simple_tp_to_houses_script.lua"] = [[
+        local houses = {
+            CFrame.new(-491, -7, -166),
+            CFrame.new(-535, -7, 93),
+            CFrame.new(250, -6, 463),
+            CFrame.new(554, 123, -72),
+            CFrame.new(510, 83, -339),
+            CFrame.new(3, -7, -2)
+        }
+        local function tp(pos)
+            local char = game.Players.LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.CFrame = pos end
+        end
+        local lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/m1kp0/libraries/refs/heads/main/m1kpe0_lime.lua"))()
+        local w = lib:Window("Teleport")
+        w:Button("Pink House", function() tp(houses[1]) end)
+        w:Button("Green House", function() tp(houses[2]) end)
+        w:Button("Purple House", function() tp(houses[3]) end)
+        w:Button("China House", function() tp(houses[4]) end)
+        w:Button("Blue House", function() tp(houses[5]) end)
+        w:Button("Spawn", function() tp(houses[6]) end)
+    ]],
+    ["orion_lib.lua"] = [[
+        local OrionLib = {
+            Themes = { Default = { Main = Color3.fromRGB(100, 100, 100), Text = Color3.fromRGB(255, 255, 255) } }
+        }
+        function OrionLib:MakeWindow(config)
+            local Orion = Instance.new("ScreenGui")
+            Orion.Name = "BetterOrion"
+            Orion.Parent = game:GetService("CoreGui")
+            return {
+                MakeTab = function(self, tabConfig)
+                    return {}
+                end
+            }
+        end
+        return OrionLib
+    ]]
+}
+
+local function loadSpoofedFile(name)
+    return spoofed_files[name] or ""
+end
+
+local lib = loadstring(loadSpoofedFile("lime_ui_lib.lua"))()
+local w = lib:Window("Main Menu")
+
+local slide_tp_en = false
+local loop_tp_en = false
+local last_house = CFrame.new(0, 0, 0)
+
+local houses = {
+    CFrame.new(-491, -7, -166),
+    CFrame.new(-535, -7, 93),
+    CFrame.new(250, -6, 463),
+    CFrame.new(554, 123, -72),
+    CFrame.new(510, 83, -339),
+    CFrame.new(3, -7, -2)
+}
+
+local function tp(pos)
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        if not slide_tp_en then
+            hrp.CFrame = pos
+        else
+            TweenService:Create(hrp, TweenInfo.new(0.15), {CFrame = pos}):Play()
+        end
+        hrp.Velocity = Vector3.new(0, 0, 0)
+        last_house = pos
+    end
+end
+
+w:Button("Pink House", function() tp(houses[1]) end)
+w:Button("Green House", function() tp(houses[2]) end)
+w:Button("Purple House", function() tp(houses[3]) end)
+w:Button("China House", function() tp(houses[4]) end)
+w:Button("Blue House", function() tp(houses[5]) end)
+w:Button("Spawn", function() tp(houses[6]) end)
+
+w:Toggle("Slide TP", function(bool) slide_tp_en = bool end)
+
+w:Toggle("Loop TP", function(bool)
+    loop_tp_en = bool
+    while loop_tp_en do
+        tp(last_house or houses[1])
+        task.wait()
+    end
+end)
